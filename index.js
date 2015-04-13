@@ -14,17 +14,17 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
     this.baseURL = url;
   });
 
-  this.getAuthorization = function(authorization) {
+  this.authorizationSerializer = function(authorization) { // can be overridden
+    var query = { authorization: authorization };
+    return { query: query };
+  };
+
+  this.getAuthorization = function() {
     return this._authorization;
   };
 
   this.setAuthorization = function(authorization) {
     this._authorization = authorization;
-  };
-
-  this.authorizationSerializer = function(authorization) {
-    var query = { authorization: authorization };
-    return { query: query };
   };
 
   this.writeAuthorization = function(params) {
