@@ -32,6 +32,12 @@ suite('KindaRemoteRepository', function() {
     server.use(body());
     server.use(router(server));
 
+    server.get('/users/007', function *() {
+      var query = util.decodeObject(this.query);
+      if (query.authorization !== '12345678') this.throw(403);
+      this.body = { id: '007', firstName: 'James', age: 39 };
+    });
+
     server.get('/users/aaa', function *() {
       this.body = { id: 'aaa', firstName: 'Manu', age: 42 };
     });
@@ -80,6 +86,7 @@ suite('KindaRemoteRepository', function() {
 
     var serverURL = 'http://localhost:' + serverPort;
     var repository = KindaRemoteRepository.create(serverURL);
+    repository.setAuthorization('12345678');
 
     var Users = Collection.extend('Users', function() {
       this.Item = this.Item.extend('User', function() {
@@ -95,6 +102,13 @@ suite('KindaRemoteRepository', function() {
 
   suiteTeardown(function *() {
     httpServer.close();
+  });
+
+  test('authorization', function *() {
+    var item = yield users.getItem('007');
+    assert.strictEqual(item.id, '007');
+    assert.strictEqual(item.firstName, 'James');
+    assert.strictEqual(item.age, 39);
   });
 
   test('get an item', function *() {
