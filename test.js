@@ -81,6 +81,19 @@ suite('KindaRemoteRepository', function() {
       this.body = 2;
     });
 
+    server.get('/users/countRetired', function *() {
+      this.body = 3;
+    });
+
+    server.get('/users/aaa/archive', function *() {
+      this.body = { ok: true };
+    });
+
+    server.post('/users/restore', function *() {
+      this.status = 201;
+      this.body = this.request.body;
+    });
+
     httpServer = http.createServer(server.callback());
     httpServer.listen(serverPort);
 
@@ -93,7 +106,16 @@ suite('KindaRemoteRepository', function() {
         this.addPrimaryKeyProperty('id', String);
         this.addProperty('firstName', String);
         this.addProperty('age', Number);
+        this.archive = function *() {
+          return yield this.call('archive');
+        };
       });
+      this.countRetired = function *() {
+        return yield this.call('countRetired');
+      };
+      this.restore = function *(archive) {
+        return yield this.call('restore', undefined, archive);
+      };
       this.setRepository(repository);
     });
 
@@ -173,5 +195,22 @@ suite('KindaRemoteRepository', function() {
   test('count items', function *() {
     var count = yield users.countItems();
     assert.strictEqual(count, 2);
+  });
+
+  test('call custom method on a collection', function *() {
+    var count = yield users.countRetired();
+    assert.strictEqual(count, 3);
+  });
+
+  test('call custom method on an item', function *() {
+    var item = yield users.getItem('aaa');
+    var result = yield item.archive();
+    assert.isTrue(result.ok);
+  });
+
+  test('call custom method with a body', function *() {
+    var archive = [{ id: 'aaa', firstName: 'Manu', age: 42 }];
+    var result = yield users.restore(archive);
+    assert.deepEqual(result, archive);
   });
 });

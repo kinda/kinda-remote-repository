@@ -111,6 +111,24 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
     throw new Error('unimplemented method');
   };
 
+  this.call = function *(collection, item, method, options, body) {
+    var url = this.makeURL(collection, item, method, options);
+    var params = {
+      method: body == null ? 'GET' : 'POST',
+      url: url,
+      body: body
+    };
+    this.writeAuthorization(params);
+    var res = yield httpClient.request(params);
+    if (res.statusCode === (body == null ? 200 : 201)) {
+      return res.body;
+    } else if (res.statusCode === 204) {
+      return;
+    } else {
+      throw this.createError(res);
+    }
+  };
+
   this.transaction = function *(fn, options) {
     return yield fn(this); // remote transactions are not supported
   };
