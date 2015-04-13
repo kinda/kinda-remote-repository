@@ -22,20 +22,33 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
     this._authorization = authorization;
   };
 
-  this.authorizationWriter = function(params, authorization) {
+  this.authorizationSerializer = function(authorization) {
+    var query = { authorization: authorization };
+    return { query: query };
+  };
+
+  this.writeAuthorization = function(params) {
+    var authorization = this.getAuthorization();
     if (!authorization) return;
-    authorization = util.encodeObject({ authorization: authorization });
-    var parsedURL = nodeURL.parse(params.url, true);
-    _.assign(parsedURL.query, authorization);
-    delete parsedURL.search;
-    params.url = nodeURL.format(parsedURL);
+    authorization = this.authorizationSerializer(authorization);
+    _.forOwn(authorization, function(value, key) {
+      if (key === 'query') {
+        value = util.encodeObject(value);
+        var parsedURL = nodeURL.parse(params.url, true);
+        _.assign(parsedURL.query, value);
+        delete parsedURL.search;
+        params.url = nodeURL.format(parsedURL);
+      } else {
+        throw new Error('invalid serialized authorization key');
+      }
+    }, this);
   };
 
   this.getItem = function *(item, options) {
     var collection = item.getCollection();
     var url = this.makeURL(collection, item, undefined, options);
     var params = { method: 'GET', url: url };
-    this.authorizationWriter(params, this.getAuthorization());
+    this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode === 204) return; // item not found with errorIfMissing=false
     else if (res.statusCode !== 200) throw this.createError(res);
@@ -49,7 +62,7 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
     var url = this.makeURL(collection, existingItem, undefined, options);
     var json = item.serialize();
     var params = { method: item.isNew ? 'POST' : 'PUT', url: url, body: json };
-    this.authorizationWriter(params, this.getAuthorization());
+    this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== (item.isNew ? 201 : 200)) throw this.createError(res);
     item.replaceValue(res.body);
@@ -63,7 +76,7 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
       url: url,
       json: false // Avoid a bug in browser-request
     };
-    this.authorizationWriter(params, this.getAuthorization());
+    this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== 204) throw this.createError(res);
   };
@@ -75,7 +88,7 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
   this.findItems = function *(collection, options) {
     var url = this.makeURL(collection, undefined, undefined, options);
     var params = { method: 'GET', url: url };
-    this.authorizationWriter(params, this.getAuthorization());
+    this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
     var items = res.body;
@@ -88,7 +101,7 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
   this.countItems = function *(collection, options) {
     var url = this.makeURL(collection, undefined, 'count', options);
     var params = { method: 'GET', url: url };
-    this.authorizationWriter(params, this.getAuthorization());
+    this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
     return res.body;
