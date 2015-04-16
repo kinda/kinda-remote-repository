@@ -77,6 +77,10 @@ suite('KindaRemoteRepository', function() {
       ];
     });
 
+    server.del('/users', function *() {
+      this.status = 204;
+    });
+
     server.get('/users/count', function *() {
       this.body = 2;
     });
@@ -190,6 +194,10 @@ suite('KindaRemoteRepository', function() {
     assert.strictEqual(items[1].id, 'bbb');
     assert.strictEqual(items[1].firstName, 'Vince');
     assert.strictEqual(items[1].age, 43);
+  });
+
+  test('find and delete items', function *() {
+    yield users.findAndDeleteItems({ start: 'bbb', end: 'ddd' });
   });
 
   test('count items', function *() {

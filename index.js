@@ -111,6 +111,14 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
     throw new Error('unimplemented method');
   };
 
+  this.findAndDeleteItems = function *(collection, options) {
+    var url = this.makeURL(collection, undefined, undefined, options);
+    var params = { method: 'DELETE', url: url };
+    this.writeAuthorization(params);
+    var res = yield httpClient.request(params);
+    if (res.statusCode !== 204) throw this.createError(res);
+  };
+
   this.call = function *(collection, item, method, options, body) {
     var url = this.makeURL(collection, item, method, options);
     var params = {
