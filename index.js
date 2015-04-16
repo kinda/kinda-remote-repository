@@ -116,7 +116,8 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
     var params = {
       method: body == null ? 'GET' : 'POST',
       url: url,
-      body: body
+      body: body,
+      timeout: 5 * 60 * 1000 // 5 minutes
     };
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
