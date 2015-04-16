@@ -133,17 +133,17 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
     return yield fn(this); // remote transactions are not supported
   };
 
-  this.makeURL = function(collection, item, action, query) {
-    if (!query) query = {};
+  this.makeURL = function(collection, item, method, options) {
+    if (!options) options = {};
     var url = this.baseURL;
     var collectionName = collection.getName();
     url += _.kebabCase(collectionName);
     var itemKey = item && item.getPrimaryKeyValue();
     if (itemKey != null) url += '/' + util.encodeValue(itemKey);
-    if (action) url += '/' + action;
-    query = util.encodeObject(query);
-    query = querystring.stringify(query);
-    if (query) url += '?' + query;
+    if (method) url += '/' + method;
+    options = util.encodeObject(options);
+    options = querystring.stringify(options);
+    if (options) url += '?' + options;
     return url;
   };
 
