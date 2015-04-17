@@ -113,7 +113,11 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
 
   this.findAndDeleteItems = function *(collection, options) {
     var url = this.makeURL(collection, undefined, undefined, options);
-    var params = { method: 'DELETE', url: url };
+    var params = {
+      method: 'DELETE',
+      url: url,
+      json: false // Avoid a bug in browser-request
+    };
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== 204) throw this.createError(res);
