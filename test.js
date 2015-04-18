@@ -32,9 +32,42 @@ suite('KindaRemoteRepository', function() {
     server.use(body());
     server.use(router(server));
 
+    server.post('/authorizations', function *() {
+      var credentials = this.request.body;
+      if (!credentials) {
+        this.status = 403;
+        return;
+      }
+      if (credentials.username !== 'mvila@3base.com') {
+        this.status = 403;
+        return;
+      }
+      if (credentials.password !== 'password') {
+        this.status = 403;
+        return;
+      }
+      this.status = 201;
+      this.body = JSON.stringify('12345678');
+    });
+
+    server.get('/authorizations/12345678', function *() {
+      this.status = 204;
+    });
+
+    server.del('/authorizations/12345678', function *() {
+      this.status = 204;
+    });
+
+    server.get('/authorizations/abcdefgh', function *() {
+      this.status = 403;
+    });
+
     server.get('/users/007', function *() {
       var query = util.decodeObject(this.query);
-      if (query.authorization !== '12345678') this.throw(403);
+      if (query.authorization !== '12345678')  {
+        this.status = 403;
+        return;
+      }
       this.body = { id: '007', firstName: 'James', age: 39 };
     });
 
@@ -103,7 +136,6 @@ suite('KindaRemoteRepository', function() {
 
     var serverURL = 'http://localhost:' + serverPort;
     var repository = KindaRemoteRepository.create(serverURL);
-    repository.setAuthorization('12345678');
 
     var Users = Collection.extend('Users', function() {
       this.Item = this.Item.extend('User', function() {
@@ -130,11 +162,56 @@ suite('KindaRemoteRepository', function() {
     httpServer.close();
   });
 
-  test('authorization', function *() {
+  test('test authorization', function *() {
+    var repository = users.getRepository();
+
+    assert.isFalse(repository.isSignedIn());
+    var credentials = { username: 'mvila@3base.com', password: 'wrongpass' };
+    var authorization = yield repository.signInWithCredentials(credentials);
+    assert.isUndefined(authorization);
+    assert.isFalse(repository.isSignedIn());
+
+    var err = yield catchError(function *() {
+      yield users.getItem('007');
+    });
+    assert.instanceOf(err, Error);
+    assert.strictEqual(err.statusCode, 403);
+
+    assert.isFalse(repository.isSignedIn());
+    var credentials = { username: 'mvila@3base.com', password: 'password' };
+    var authorization = yield repository.signInWithCredentials(credentials);
+    assert.ok(authorization);
+    assert.isTrue(repository.isSignedIn());
+
     var item = yield users.getItem('007');
     assert.strictEqual(item.id, '007');
     assert.strictEqual(item.firstName, 'James');
     assert.strictEqual(item.age, 39);
+
+    assert.isTrue(repository.isSignedIn());
+    yield repository.signOut();
+    assert.isFalse(repository.isSignedIn());
+
+    var err = yield catchError(function *() {
+      yield users.getItem('007');
+    });
+    assert.instanceOf(err, Error);
+    assert.strictEqual(err.statusCode, 403);
+
+    assert.isFalse(repository.isSignedIn());
+    var authorization = yield repository.signInWithAuthorization('abcdefgh');
+    assert.isFalse(authorization);
+    assert.isFalse(repository.isSignedIn());
+
+    assert.isFalse(repository.isSignedIn());
+    var authorization = yield repository.signInWithAuthorization('12345678');
+    assert.isTrue(authorization);
+    assert.isTrue(repository.isSignedIn());
+
+    var item = yield users.getItem('007');
+    assert.ok(item);
+
+    yield repository.signOut();
   });
 
   test('get an item', function *() {

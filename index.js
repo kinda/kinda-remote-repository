@@ -14,10 +14,7 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
     this.baseURL = url;
   });
 
-  this.authorizationSerializer = function(authorization) { // can be overridden
-    var query = { authorization: authorization };
-    return { query: query };
-  };
+  // === Authorization ===
 
   this.getAuthorization = function() {
     return this._authorization;
@@ -25,6 +22,53 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
 
   this.setAuthorization = function(authorization) {
     this._authorization = authorization;
+  };
+
+  this.signInWithCredentials = function *(credentials) {
+    if (!credentials) throw new Error('credentials are missing');
+    var url = this.baseURL + 'authorizations';
+    var params = { method: 'POST', url: url, body: credentials };
+    var res = yield httpClient.request(params);
+    if (res.statusCode === 403) return;
+    if (res.statusCode !== 201) {
+      throw new Error('unexpected HTTP status code (' + res.statusCode + ')');
+    }
+    var authorization = res.body;
+    if (!authorization) throw new Error('assertion error (!authorization)');
+    this.setAuthorization(authorization);
+    return authorization;
+  };
+
+  this.signInWithAuthorization = function *(authorization) {
+    if (!authorization) throw new Error('authorization is missing');
+    var url = this.baseURL + 'authorizations/' + authorization;
+    var res = yield httpClient.get(url);
+    if (res.statusCode === 403) return false;
+    if (res.statusCode !== 204) {
+      throw new Error('unexpected HTTP status code (' + res.statusCode + ')');
+    }
+    this.setAuthorization(authorization);
+    return true;
+  };
+
+  this.signOut = function *() {
+    var authorization = this.getAuthorization();
+    if (!authorization) return;
+    var url = this.baseURL + 'authorizations/' + authorization;
+    var res = yield httpClient.del(url);
+    if (res.statusCode !== 204) {
+      throw new Error('unexpected HTTP status code (' + res.statusCode + ')');
+    }
+    this.setAuthorization(undefined);
+  };
+
+  this.isSignedIn = function() {
+    return !!this.getAuthorization();
+  };
+
+  this.authorizationSerializer = function(authorization) { // can be overridden
+    var query = { authorization: authorization };
+    return { query: query };
   };
 
   this.writeAuthorization = function(params) {
@@ -43,6 +87,8 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
       }
     }, this);
   };
+
+  // === Operations ===
 
   this.getItem = function *(item, options) {
     var collection = item.getCollection();
@@ -145,6 +191,8 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
   this.transaction = function *(fn, options) {
     return yield fn(this); // remote transactions are not supported
   };
+
+  // === Helpers ===
 
   this.makeURL = function(collection, item, method, options) {
     if (!options) options = {};
