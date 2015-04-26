@@ -134,9 +134,6 @@ suite('KindaRemoteRepository', function() {
     httpServer = http.createServer(server.callback());
     httpServer.listen(serverPort);
 
-    var serverURL = 'http://localhost:' + serverPort;
-    var repository = KindaRemoteRepository.create(serverURL);
-
     var Users = Collection.extend('Users', function() {
       this.Item = this.Item.extend('User', function() {
         this.addPrimaryKeyProperty('id', String);
@@ -152,8 +149,10 @@ suite('KindaRemoteRepository', function() {
       this.restore = function *(archive) {
         return yield this.call('restore', undefined, archive);
       };
-      this.setRepository(repository);
     });
+
+    var serverURL = 'http://localhost:' + serverPort;
+    var repository = KindaRemoteRepository.create('Test', serverURL, [Users]);
 
     users = Users.create();
   });

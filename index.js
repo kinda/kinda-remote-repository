@@ -8,10 +8,19 @@ var util = require('kinda-util').create();
 var httpClient = require('kinda-http-client').create();
 
 var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function() {
-  this.setCreator(function(url) {
+  this.setCreator(function(name, url, collections, options) {
+    if (!name) throw new Error('name is missing');
     if (!url) throw new Error('url is missing');
+    if (!_.isArray(collections)) throw new Error('collections parameter is invalid');
+    if (!options) options = {};
+    this.name = name;
+    collections.forEach(function(collection) {
+      var collectionPrototype = collection.getPrototype();
+      collectionPrototype.setRepository(this);
+    }, this);
     if (!_.endsWith(url, '/')) url += '/';
     this.baseURL = url;
+    this.repository = this;
   });
 
   // === Authorization ===
