@@ -16,7 +16,7 @@ var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function
     this.name = name;
     collections.forEach(function(collection) {
       var collectionPrototype = collection.getPrototype();
-      collectionPrototype.setRepository(this);
+      collectionPrototype.setRepository(this);  // TODO: remove this
     }, this);
     if (!_.endsWith(url, '/')) url += '/';
     this.baseURL = url;
