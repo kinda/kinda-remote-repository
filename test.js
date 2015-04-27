@@ -154,7 +154,7 @@ suite('KindaRemoteRepository', function() {
     var serverURL = 'http://localhost:' + serverPort;
     var repository = KindaRemoteRepository.create('Test', serverURL, [Users]);
 
-    users = Users.create();
+    users = repository.createCollection('Users');
   });
 
   suiteTeardown(function *() {

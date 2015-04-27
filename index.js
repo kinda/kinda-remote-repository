@@ -3,24 +3,16 @@
 var nodeURL = require('url');
 var querystring = require('querystring');
 var _ = require('lodash');
-var KindaObject = require('kinda-object');
+var KindaAbstractRepository = require('kinda-abstract-repository');
 var util = require('kinda-util').create();
 var httpClient = require('kinda-http-client').create();
 
-var KindaRemoteRepository = KindaObject.extend('KindaRemoteRepository', function() {
-  this.setCreator(function(name, url, collections, options) {
-    if (!name) throw new Error('name is missing');
-    if (!url) throw new Error('url is missing');
-    if (!_.isArray(collections)) throw new Error('collections parameter is invalid');
-    if (!options) options = {};
-    this.name = name;
-    collections.forEach(function(collection) {
-      var collectionPrototype = collection.getPrototype();
-      collectionPrototype.setRepository(this);  // TODO: remove this
-    }, this);
+var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepository', function() {
+  var superCreator = this.getCreator();
+  this.setCreator(function(name, url, collectionClasses, options) {
+    superCreator.apply(this, arguments);
     if (!_.endsWith(url, '/')) url += '/';
     this.baseURL = url;
-    this.repository = this;
   });
 
   // === Authorization ===
