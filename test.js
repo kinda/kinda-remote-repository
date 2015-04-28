@@ -118,7 +118,7 @@ suite('KindaRemoteRepository', function() {
       this.body = 2;
     });
 
-    server.get('/users/countRetired', function *() {
+    server.get('/users/count-retired', function *() {
       this.body = 3;
     });
 

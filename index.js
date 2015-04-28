@@ -202,7 +202,7 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     url += _.kebabCase(collectionName);
     var itemKey = item && item.getPrimaryKeyValue();
     if (itemKey != null) url += '/' + util.encodeValue(itemKey);
-    if (method) url += '/' + method;
+    if (method) url += '/' + _.kebabCase(method);
     options = util.encodeObject(options);
     options = querystring.stringify(options);
     if (options) url += '?' + options;
