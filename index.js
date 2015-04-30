@@ -99,7 +99,14 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     var res = yield httpClient.request(params);
     if (res.statusCode === 204) return; // item not found with errorIfMissing=false
     else if (res.statusCode !== 200) throw this.createError(res);
-    item.replaceValue(res.body);
+    var result = res.body;
+    var className = result.class;
+    if (className === item.getClassName()) {
+      item.replaceValue(result.value);
+    } else {
+      var collection = this.createCollectionFromItemClassName(className);
+      item = collection.unserializeItem(result.value);
+    }
     return item;
   };
 
@@ -112,17 +119,13 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== (item.isNew ? 201 : 200)) throw this.createError(res);
-    item.replaceValue(res.body);
+    item.replaceValue(res.body.value);
   };
 
   this.deleteItem = function *(item, options) {
     var collection = item.getCollection();
     var url = this.makeURL(collection, item, undefined, options);
-    var params = {
-      method: 'DELETE',
-      url: url,
-      json: false // Avoid a bug in browser-request
-    };
+    var params = { method: 'DELETE', url: url };
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== 204) throw this.createError(res);
@@ -138,10 +141,12 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
-    var items = res.body;
-    items = items.map(function(item) {
-      return collection.unserializeItem(item);
-    });
+    var results = res.body;
+    var items = results.map(function(result) {
+      var className = result.class;
+      var collection = this.createCollectionFromItemClassName(className);
+      return collection.unserializeItem(result.value);
+    }, this);
     return items;
   };
 
@@ -160,11 +165,7 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
 
   this.findAndDeleteItems = function *(collection, options) {
     var url = this.makeURL(collection, undefined, undefined, options);
-    var params = {
-      method: 'DELETE',
-      url: url,
-      json: false // Avoid a bug in browser-request
-    };
+    var params = { method: 'DELETE', url: url };
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== 204) throw this.createError(res);
@@ -191,6 +192,10 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
 
   this.transaction = function *(fn, options) {
     return yield fn(this); // remote transactions are not supported
+  };
+
+  this.isInsideTransaction = function() {
+    return false;
   };
 
   // === Helpers ===

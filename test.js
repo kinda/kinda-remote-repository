@@ -13,7 +13,7 @@ var Collection = require('kinda-collection');
 var KindaRemoteRepository = require('./');
 
 suite('KindaRemoteRepository', function() {
-  var httpServer, users;
+  var httpServer, users, superusers;
 
   var catchError = function *(fn) {
     var err;
@@ -68,11 +68,17 @@ suite('KindaRemoteRepository', function() {
         this.status = 403;
         return;
       }
-      this.body = { id: '007', firstName: 'James', age: 39 };
+      this.body = {
+        class: 'User',
+        value: { id: '007', firstName: 'James', age: 39 }
+      };
     });
 
     server.get('/users/aaa', function *() {
-      this.body = { id: 'aaa', firstName: 'Manu', age: 42 };
+      this.body = {
+        class: 'Superuser',
+        value: { id: 'aaa', firstName: 'Manu', age: 42, superpower: 'telepathy' }
+      };
     });
 
     server.get('/users/xyz', function *() {
@@ -85,12 +91,12 @@ suite('KindaRemoteRepository', function() {
       var user = this.request.body;
       user.id = 'bbb';
       this.status = 201;
-      this.body = user;
+      this.body = { class: 'User', value: user };
     });
 
     server.put('/users/bbb', function *() {
       var user = this.request.body;
-      this.body = user;
+      this.body = { class: 'User', value: user };
     });
 
     server.del('/users/ccc', function *() {
@@ -105,8 +111,14 @@ suite('KindaRemoteRepository', function() {
 
     server.get('/users', function *() {
       this.body = [
-        { id: 'aaa', firstName: 'Manu', age: 42 },
-        { id: 'bbb', firstName: 'Vince', age: 43 }
+        {
+          class: 'Superuser',
+          value: { id: 'aaa', firstName: 'Manu', age: 42, superpower: 'telepathy' }
+        },
+        {
+          class: 'User',
+          value: { id: 'bbb', firstName: 'Vince', age: 43 }
+        }
       ];
     });
 
@@ -122,7 +134,7 @@ suite('KindaRemoteRepository', function() {
       this.body = 3;
     });
 
-    server.get('/users/aaa/archive', function *() {
+    server.get('/superusers/aaa/archive', function *() {
       this.body = { ok: true };
     });
 
@@ -151,10 +163,19 @@ suite('KindaRemoteRepository', function() {
       };
     });
 
+    var Superusers = Users.extend('Superusers', function() {
+      this.Item = this.Item.extend('Superuser', function() {
+        this.addProperty('superpower', String);
+      });
+    });
+
     var serverURL = 'http://localhost:' + serverPort;
-    var repository = KindaRemoteRepository.create('Test', serverURL, [Users]);
+    var repository = KindaRemoteRepository.create('Test', serverURL,
+      [Users, Superusers]
+    );
 
     users = repository.createCollection('Users');
+    superusers = repository.createCollection('Superusers');
   });
 
   suiteTeardown(function *() {
@@ -215,9 +236,11 @@ suite('KindaRemoteRepository', function() {
 
   test('get an item', function *() {
     var item = yield users.getItem('aaa');
+    assert.strictEqual(item.getClassName(), 'Superuser');
     assert.strictEqual(item.id, 'aaa');
     assert.strictEqual(item.firstName, 'Manu');
     assert.strictEqual(item.age, 42);
+    assert.strictEqual(item.superpower, 'telepathy');
 
     var err = yield catchError(function *() {
       yield users.getItem('xyz');
@@ -264,21 +287,24 @@ suite('KindaRemoteRepository', function() {
   test('find items', function *() {
     var items = yield users.findItems();
     assert.strictEqual(items.length, 2);
+    assert.strictEqual(items[0].getClassName(), 'Superuser');
     assert.strictEqual(items[0].id, 'aaa');
     assert.strictEqual(items[0].firstName, 'Manu');
     assert.strictEqual(items[0].age, 42);
+    assert.strictEqual(items[0].superpower, 'telepathy');
+    assert.strictEqual(items[1].getClassName(), 'User');
     assert.strictEqual(items[1].id, 'bbb');
     assert.strictEqual(items[1].firstName, 'Vince');
     assert.strictEqual(items[1].age, 43);
   });
 
-  test('find and delete items', function *() {
-    yield users.findAndDeleteItems({ start: 'bbb', end: 'ddd' });
-  });
-
   test('count items', function *() {
     var count = yield users.countItems();
     assert.strictEqual(count, 2);
+  });
+
+  test('find and delete items', function *() {
+    yield users.findAndDeleteItems({ start: 'bbb', end: 'ddd' });
   });
 
   test('call custom method on a collection', function *() {
