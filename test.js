@@ -109,6 +109,28 @@ suite('KindaRemoteRepository', function() {
       this.status = query.errorIfMissing ? 404 : 204;
     });
 
+    server.post('/users/get-items', function *() {
+      var ids = this.request.body;
+      var results = ids.map(function(id) {
+        switch (id) {
+          case 'aaa':
+            return {
+              class: 'Superuser',
+              value: { id: 'aaa', firstName: 'Manu', age: 42, superpower: 'telepathy' }
+            };
+          case 'bbb':
+            return {
+              class: 'User',
+              value: { id: 'bbb', firstName: 'Vince', age: 43 }
+            };
+          default:
+            throw new Error('item not found');
+        }
+      });
+      this.status = 201;
+      this.body = results;
+    });
+
     server.get('/users', function *() {
       this.body = [
         {
@@ -282,6 +304,20 @@ suite('KindaRemoteRepository', function() {
       yield users.deleteItem('xyz', { errorIfMissing: false });
     });
     assert.isUndefined(err);
+  });
+
+  test('get several items at once', function *() {
+    var items = yield users.getItems(['aaa', 'bbb']);
+    assert.strictEqual(items.length, 2);
+    assert.strictEqual(items[0].getClassName(), 'Superuser');
+    assert.strictEqual(items[0].id, 'aaa');
+    assert.strictEqual(items[0].firstName, 'Manu');
+    assert.strictEqual(items[0].age, 42);
+    assert.strictEqual(items[0].superpower, 'telepathy');
+    assert.strictEqual(items[1].getClassName(), 'User');
+    assert.strictEqual(items[1].id, 'bbb');
+    assert.strictEqual(items[1].firstName, 'Vince');
+    assert.strictEqual(items[1].age, 43);
   });
 
   test('find items', function *() {

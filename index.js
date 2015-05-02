@@ -132,7 +132,25 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
   };
 
   this.getItems = function *(items, options) {
-    throw new Error('unimplemented method');
+    if (!items.length) return [];
+    // we suppose that every items are part of the same collection:
+    var collection = items[0].getCollection();
+    var keys = _.invoke(items, 'getPrimaryKeyValue');
+    var url = this.makeURL(collection, undefined, 'getItems', options);
+    var params = { method: 'POST', url: url, body: keys };
+    this.writeAuthorization(params);
+    var res = yield httpClient.request(params);
+    if (res.statusCode !== 201) throw this.createError(res);
+    var results = res.body;
+    var cache = {};
+    var items = results.map(function(result) {
+      // TODO: like getItem(), try to reuse the passed items instead of
+      // build new one
+      var className = result.class;
+      var collection = this.createCollectionFromItemClassName(className, cache);
+      return collection.unserializeItem(result.value);
+    }, this);
+    return items;
   };
 
   this.findItems = function *(collection, options) {
