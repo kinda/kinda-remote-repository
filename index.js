@@ -142,9 +142,10 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     var res = yield httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
     var results = res.body;
+    var cache = {};
     var items = results.map(function(result) {
       var className = result.class;
-      var collection = this.createCollectionFromItemClassName(className);
+      var collection = this.createCollectionFromItemClassName(className, cache);
       return collection.unserializeItem(result.value);
     }, this);
     return items;
