@@ -11,9 +11,28 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
   var superCreator = this.getCreator();
   this.setCreator(function(name, url, collectionClasses, options) {
     superCreator.apply(this, arguments);
-    if (!_.endsWith(url, '/')) url += '/';
     this.baseURL = url;
   });
+
+  this.getRepositoryId = function *() {
+    if (this._repositoryId) return this._repositoryId;
+    var url = this.makeURL(undefined, undefined, 'getRepositoryId');
+    var params = { method: 'GET', url: url };
+    this.writeAuthorization(params);
+    var res = yield httpClient.request(params);
+    if (res.statusCode !== 200) throw this.createError(res);
+    var id = res.body;
+    this._repositoryId = id;
+    return id;
+  };
+
+  this.transaction = function *(fn, options) {
+    return yield fn(this); // remote transactions are not supported
+  };
+
+  this.isInsideTransaction = function() {
+    return false;
+  };
 
   // === Authorization ===
 
@@ -27,7 +46,7 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
 
   this.signInWithCredentials = function *(credentials) {
     if (!credentials) throw new Error('credentials are missing');
-    var url = this.baseURL + 'authorizations';
+    var url = this.makeURL('authorizations');
     var params = { method: 'POST', url: url, body: credentials };
     var res = yield httpClient.request(params);
     if (res.statusCode === 403) return;
@@ -42,7 +61,7 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
 
   this.signInWithAuthorization = function *(authorization) {
     if (!authorization) throw new Error('authorization is missing');
-    var url = this.baseURL + 'authorizations/' + authorization;
+    var url = this.makeURL('authorizations', authorization);
     var res = yield httpClient.get(url);
     if (res.statusCode === 403) return false;
     if (res.statusCode !== 204) {
@@ -55,7 +74,7 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
   this.signOut = function *() {
     var authorization = this.getAuthorization();
     if (!authorization) return;
-    var url = this.baseURL + 'authorizations/' + authorization;
+    var url = this.makeURL('authorizations', authorization);
     var res = yield httpClient.del(url);
     if (res.statusCode !== 204) {
       throw new Error('unexpected HTTP status code (' + res.statusCode + ')');
@@ -209,27 +228,34 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     }
   };
 
-  this.transaction = function *(fn, options) {
-    return yield fn(this); // remote transactions are not supported
-  };
-
-  this.isInsideTransaction = function() {
-    return false;
-  };
-
   // === Helpers ===
 
   this.makeURL = function(collection, item, method, options) {
     if (!options) options = {};
+
     var url = this.baseURL;
-    var collectionName = collection.getName();
-    url += _.kebabCase(collectionName);
-    var itemKey = item && item.getPrimaryKeyValue();
-    if (itemKey != null) url += '/' + util.encodeValue(itemKey);
-    if (method) url += '/' + _.kebabCase(method);
+    if (_.endsWith(url, '/')) url = url.slice(0, -1);
+
+    if (collection) {
+      if (!_.isString(collection)) collection = collection.getName();
+      url += '/' + _.kebabCase(collection);
+    }
+
+    if (item) {
+      if (!_.isString(item)) item = item.getPrimaryKeyValue();
+      if (item != null) url += '/' + util.encodeValue(item);
+    }
+
+    if (method) {
+      url += '/' + _.kebabCase(method);
+    }
+
     options = util.encodeObject(options);
     options = querystring.stringify(options);
-    if (options) url += '?' + options;
+    if (options) {
+      url += '?' + options;
+    }
+
     return url;
   };
 

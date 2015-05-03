@@ -13,7 +13,7 @@ var Collection = require('kinda-collection');
 var KindaRemoteRepository = require('./');
 
 suite('KindaRemoteRepository', function() {
-  var httpServer, users, superusers;
+  var httpServer, repository, users, superusers;
 
   var catchError = function *(fn) {
     var err;
@@ -47,6 +47,7 @@ suite('KindaRemoteRepository', function() {
         return;
       }
       this.status = 201;
+      this.type = 'application/json';
       this.body = JSON.stringify('12345678');
     });
 
@@ -60,6 +61,11 @@ suite('KindaRemoteRepository', function() {
 
     server.get('/authorizations/abcdefgh', function *() {
       this.status = 403;
+    });
+
+    server.get('/get-repository-id', function *() {
+      this.type = 'application/json';
+      this.body = JSON.stringify('a1b2c3d4e5');
     });
 
     server.get('/users/007', function *() {
@@ -192,7 +198,7 @@ suite('KindaRemoteRepository', function() {
     });
 
     var serverURL = 'http://localhost:' + serverPort;
-    var repository = KindaRemoteRepository.create('Test', serverURL,
+    repository = KindaRemoteRepository.create('Test', serverURL,
       [Users, Superusers]
     );
 
@@ -254,6 +260,11 @@ suite('KindaRemoteRepository', function() {
     assert.ok(item);
 
     yield repository.signOut();
+  });
+
+  test('get repository id', function *() {
+    var id = yield repository.getRepositoryId();
+    assert.strictEqual(id, 'a1b2c3d4e5');
   });
 
   test('get an item', function *() {
