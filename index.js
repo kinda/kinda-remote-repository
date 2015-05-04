@@ -16,12 +16,12 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
 
   this.getRepositoryId = function *() {
     if (this._repositoryId) return this._repositoryId;
-    var url = this.makeURL(undefined, undefined, 'getRepositoryId');
+    var url = this.makeURL();
     var params = { method: 'GET', url: url };
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
-    var id = res.body;
+    var id = res.body.repositoryId;
     this._repositoryId = id;
     return id;
   };
@@ -139,6 +139,7 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     var res = yield httpClient.request(params);
     if (res.statusCode !== (item.isNew ? 201 : 200)) throw this.createError(res);
     item.replaceValue(res.body.value);
+    yield this.emitAsync('didPutItem', item, options);
   };
 
   this.deleteItem = function *(item, options) {
@@ -148,6 +149,7 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
     if (res.statusCode !== 204) throw this.createError(res);
+    yield this.emitAsync('didDeleteItem', item, options);
   };
 
   this.getItems = function *(items, options) {

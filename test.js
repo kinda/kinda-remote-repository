@@ -63,9 +63,10 @@ suite('KindaRemoteRepository', function() {
       this.status = 403;
     });
 
-    server.get('/get-repository-id', function *() {
-      this.type = 'application/json';
-      this.body = JSON.stringify('a1b2c3d4e5');
+    server.get('/', function *() {
+      this.body = {
+        repositoryId: 'a1b2c3d4e5'
+      };
     });
 
     server.get('/users/007', function *() {
