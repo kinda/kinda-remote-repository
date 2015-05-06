@@ -107,13 +107,17 @@ suite('KindaRemoteRepository', function() {
     });
 
     server.del('/users/ccc', function *() {
-      this.status = 204;
+      this.body = 1;
     });
 
     server.del('/users/xyz', function *() {
       var query = util.decodeObject(this.query);
       if (query.errorIfMissing == null) query.errorIfMissing = true;
-      this.status = query.errorIfMissing ? 404 : 204;
+      if (query.errorIfMissing) {
+        this.status = 404;
+      } else {
+        this.body = 0;
+      }
     });
 
     server.post('/users/get-items', function *() {
@@ -152,7 +156,7 @@ suite('KindaRemoteRepository', function() {
     });
 
     server.del('/users', function *() {
-      this.status = 204;
+      this.body = 3;
     });
 
     server.get('/users/count', function *() {
@@ -352,7 +356,10 @@ suite('KindaRemoteRepository', function() {
   });
 
   test('find and delete items', function *() {
-    yield users.findAndDeleteItems({ start: 'bbb', end: 'ddd' });
+    var deletedItemsCount = yield users.findAndDeleteItems({
+      start: 'bbb', end: 'ddd'
+    });
+    assert.strictEqual(deletedItemsCount, 3);
   });
 
   test('call custom method on a collection', function *() {

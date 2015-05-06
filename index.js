@@ -148,8 +148,10 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     var params = { method: 'DELETE', url: url };
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
-    if (res.statusCode !== 204) throw this.createError(res);
-    yield this.emitAsync('didDeleteItem', item, options);
+    if (res.statusCode !== 200) throw this.createError(res);
+    var hasBeenDeleted = res.body;
+    if (hasBeenDeleted) yield this.emitAsync('didDeleteItem', item, options);
+    return hasBeenDeleted;
   };
 
   this.getItems = function *(items, options) {
@@ -208,7 +210,8 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     var params = { method: 'DELETE', url: url };
     this.writeAuthorization(params);
     var res = yield httpClient.request(params);
-    if (res.statusCode !== 204) throw this.createError(res);
+    if (res.statusCode !== 200) throw this.createError(res);
+    return res.body;
   };
 
   this.call = function *(collection, item, method, options, body) {
