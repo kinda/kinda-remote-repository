@@ -1,8 +1,8 @@
 "use strict";
 
 var nodeURL = require('url');
-var querystring = require('querystring');
 var _ = require('lodash');
+var Qs = require('qs');
 var KindaAbstractRepository = require('kinda-abstract-repository');
 var util = require('kinda-util').create();
 var httpClient = require('kinda-http-client').create();
@@ -97,7 +97,7 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     authorization = this.authorizationSerializer(authorization);
     _.forOwn(authorization, function(value, key) {
       if (key === 'query') {
-        value = util.encodeObject(value);
+        value = util.encodeValue(value);
         var parsedURL = nodeURL.parse(params.url, true);
         _.assign(parsedURL.query, value);
         delete parsedURL.search;
@@ -255,8 +255,8 @@ var KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
       url += '/' + _.kebabCase(method);
     }
 
-    options = util.encodeObject(options);
-    options = querystring.stringify(options);
+    options = util.encodeValue(options);
+    options = Qs.stringify(options);
     if (options) {
       url += '?' + options;
     }

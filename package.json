@@ -20,7 +20,8 @@
     "kinda-abstract-repository": "^0.2.3",
     "kinda-http-client": "^0.1.3",
     "kinda-util": "^0.1.6",
-    "lodash": "^3.5.0"
+    "lodash": "^3.5.0",
+    "qs": "^2.4.1"
   },
   "devDependencies": {
     "chai": "^2.1.2",
