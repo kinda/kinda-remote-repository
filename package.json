@@ -17,9 +17,9 @@
   "author": "Manuel Vila <mvila@3base.com>",
   "license": "MIT",
   "dependencies": {
-    "kinda-abstract-repository": "^0.2.3",
+    "kinda-abstract-repository": "^0.2.4",
     "kinda-http-client": "^0.1.3",
-    "kinda-util": "^0.1.6",
+    "kinda-util": "^0.1.12",
     "lodash": "^3.5.0",
     "qs": "^2.4.1"
   },

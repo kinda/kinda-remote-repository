@@ -70,7 +70,7 @@ suite('KindaRemoteRepository', function() {
     });
 
     server.get('/users/007', function *() {
-      var query = util.decodeObject(this.query);
+      var query = util.decodeValue(this.query);
       if (query.authorization !== '12345678')  {
         this.status = 403;
         return;
@@ -89,7 +89,7 @@ suite('KindaRemoteRepository', function() {
     });
 
     server.get('/users/xyz', function *() {
-      var query = util.decodeObject(this.query);
+      var query = util.decodeValue(this.query);
       if (query.errorIfMissing == null) query.errorIfMissing = true;
       this.status = query.errorIfMissing ? 404 : 204;
     });
@@ -111,7 +111,7 @@ suite('KindaRemoteRepository', function() {
     });
 
     server.del('/users/xyz', function *() {
-      var query = util.decodeObject(this.query);
+      var query = util.decodeValue(this.query);
       if (query.errorIfMissing == null) query.errorIfMissing = true;
       if (query.errorIfMissing) {
         this.status = 404;
