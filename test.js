@@ -1,39 +1,40 @@
-"use strict";
+'use strict';
 
 
-var http = require('http');
+let http = require('http');
 require('co-mocha');
-var assert = require('chai').assert;
-var _ = require('lodash');
-var koa = require('koa');
-var router = require('koa-router');
-var body = require('koa-body');
-var util = require('kinda-util').create();
-var Collection = require('kinda-collection');
-var KindaRemoteRepository = require('./');
+let assert = require('chai').assert;
+let koa = require('koa');
+let koaRouter = require('koa-router');
+let body = require('koa-body');
+let util = require('kinda-util').create();
+let Collection = require('kinda-collection');
+let KindaRemoteRepository = require('./src');
 
 suite('KindaRemoteRepository', function() {
-  var httpServer, repository, users, superusers;
+  let httpServer, repository, users;
 
-  var catchError = function *(fn) {
-    var err;
+  let catchError = function *(fn) {
+    let err;
     try {
       yield fn();
     } catch (e) {
-      err = e
+      err = e;
     }
     return err;
   };
 
   suiteSetup(function *() {
-    var serverPort = 8888;
+    let serverPort = 8888;
 
-    var server = koa();
+    let server = koa();
     server.use(body());
-    server.use(router(server));
+    let router = koaRouter();
+    server.use(router.routes());
+    server.use(router.allowedMethods());
 
-    server.post('/authorizations', function *() {
-      var credentials = this.request.body;
+    router.post('/authorizations', function *() {
+      let credentials = this.request.body;
       if (!credentials) {
         this.status = 403;
         return;
@@ -51,27 +52,27 @@ suite('KindaRemoteRepository', function() {
       this.body = JSON.stringify('12345678');
     });
 
-    server.get('/authorizations/12345678', function *() {
+    router.get('/authorizations/12345678', function *() {
       this.status = 204;
     });
 
-    server.del('/authorizations/12345678', function *() {
+    router.del('/authorizations/12345678', function *() {
       this.status = 204;
     });
 
-    server.get('/authorizations/abcdefgh', function *() {
+    router.get('/authorizations/abcdefgh', function *() {
       this.status = 403;
     });
 
-    server.get('/', function *() {
+    router.get('/', function *() {
       this.body = {
         repositoryId: 'a1b2c3d4e5'
       };
     });
 
-    server.get('/users/007', function *() {
-      var query = util.decodeValue(this.query);
-      if (query.authorization !== '12345678')  {
+    router.get('/users/007', function *() {
+      let query = util.decodeValue(this.query);
+      if (query.authorization !== '12345678') {
         this.status = 403;
         return;
       }
@@ -81,37 +82,37 @@ suite('KindaRemoteRepository', function() {
       };
     });
 
-    server.get('/users/aaa', function *() {
+    router.get('/users/aaa', function *() {
       this.body = {
         class: 'Superuser',
         value: { id: 'aaa', firstName: 'Manu', age: 42, superpower: 'telepathy' }
       };
     });
 
-    server.get('/users/xyz', function *() {
-      var query = util.decodeValue(this.query);
+    router.get('/users/xyz', function *() {
+      let query = util.decodeValue(this.query);
       if (query.errorIfMissing == null) query.errorIfMissing = true;
       this.status = query.errorIfMissing ? 404 : 204;
     });
 
-    server.post('/users', function *() {
-      var user = this.request.body;
+    router.post('/users', function *() {
+      let user = this.request.body;
       user.id = 'bbb';
       this.status = 201;
       this.body = { class: 'User', value: user };
     });
 
-    server.put('/users/bbb', function *() {
-      var user = this.request.body;
+    router.put('/users/bbb', function *() {
+      let user = this.request.body;
       this.body = { class: 'User', value: user };
     });
 
-    server.del('/users/ccc', function *() {
+    router.del('/users/ccc', function *() {
       this.body = 1;
     });
 
-    server.del('/users/xyz', function *() {
-      var query = util.decodeValue(this.query);
+    router.del('/users/xyz', function *() {
+      let query = util.decodeValue(this.query);
       if (query.errorIfMissing == null) query.errorIfMissing = true;
       if (query.errorIfMissing) {
         this.status = 404;
@@ -120,9 +121,9 @@ suite('KindaRemoteRepository', function() {
       }
     });
 
-    server.post('/users/get-items', function *() {
-      var ids = this.request.body;
-      var results = ids.map(function(id) {
+    router.post('/users/get-items', function *() {
+      let ids = this.request.body;
+      let results = ids.map(function(id) {
         switch (id) {
           case 'aaa':
             return {
@@ -142,7 +143,7 @@ suite('KindaRemoteRepository', function() {
       this.body = results;
     });
 
-    server.get('/users', function *() {
+    router.get('/users', function *() {
       this.body = [
         {
           class: 'Superuser',
@@ -155,23 +156,23 @@ suite('KindaRemoteRepository', function() {
       ];
     });
 
-    server.del('/users', function *() {
+    router.del('/users', function *() {
       this.body = 3;
     });
 
-    server.get('/users/count', function *() {
+    router.get('/users/count', function *() {
       this.body = 2;
     });
 
-    server.get('/users/count-retired', function *() {
+    router.get('/users/count-retired', function *() {
       this.body = 3;
     });
 
-    server.get('/superusers/aaa/archive', function *() {
+    router.get('/superusers/aaa/archive', function *() {
       this.body = { ok: true };
     });
 
-    server.post('/users/restore', function *() {
+    router.post('/users/restore', function *() {
       this.status = 201;
       this.body = this.request.body;
     });
@@ -179,7 +180,7 @@ suite('KindaRemoteRepository', function() {
     httpServer = http.createServer(server.callback());
     httpServer.listen(serverPort);
 
-    var Users = Collection.extend('Users', function() {
+    let Users = Collection.extend('Users', function() {
       this.Item = this.Item.extend('User', function() {
         this.addPrimaryKeyProperty('id', String);
         this.addProperty('firstName', String);
@@ -196,19 +197,20 @@ suite('KindaRemoteRepository', function() {
       };
     });
 
-    var Superusers = Users.extend('Superusers', function() {
+    let Superusers = Users.extend('Superusers', function() {
       this.Item = this.Item.extend('Superuser', function() {
         this.addProperty('superpower', String);
       });
     });
 
-    var serverURL = 'http://localhost:' + serverPort;
-    repository = KindaRemoteRepository.create('Test', serverURL,
-      [Users, Superusers]
-    );
+    let serverURL = 'http://localhost:' + serverPort;
+    repository = KindaRemoteRepository.create({
+      name: 'Test',
+      url: serverURL,
+      collections: [Users, Superusers]
+    });
 
     users = repository.createCollection('Users');
-    superusers = repository.createCollection('Superusers');
   });
 
   suiteTeardown(function *() {
@@ -216,82 +218,80 @@ suite('KindaRemoteRepository', function() {
   });
 
   test('test authorization', function *() {
-    var repository = users.getRepository();
-
-    assert.isFalse(repository.isSignedIn());
-    var credentials = { username: 'mvila@3base.com', password: 'wrongpass' };
-    var authorization = yield repository.signInWithCredentials(credentials);
+    assert.isFalse(repository.isSignedIn);
+    let credentials = { username: 'mvila@3base.com', password: 'wrongpass' };
+    let authorization = yield repository.signInWithCredentials(credentials);
     assert.isUndefined(authorization);
-    assert.isFalse(repository.isSignedIn());
+    assert.isFalse(repository.isSignedIn);
 
-    var err = yield catchError(function *() {
+    let err = yield catchError(function *() {
       yield users.getItem('007');
     });
     assert.instanceOf(err, Error);
     assert.strictEqual(err.statusCode, 403);
 
-    assert.isFalse(repository.isSignedIn());
-    var credentials = { username: 'mvila@3base.com', password: 'password' };
-    var authorization = yield repository.signInWithCredentials(credentials);
+    assert.isFalse(repository.isSignedIn);
+    credentials = { username: 'mvila@3base.com', password: 'password' };
+    authorization = yield repository.signInWithCredentials(credentials);
     assert.ok(authorization);
-    assert.isTrue(repository.isSignedIn());
+    assert.isTrue(repository.isSignedIn);
 
-    var item = yield users.getItem('007');
+    let item = yield users.getItem('007');
     assert.strictEqual(item.id, '007');
     assert.strictEqual(item.firstName, 'James');
     assert.strictEqual(item.age, 39);
 
-    assert.isTrue(repository.isSignedIn());
+    assert.isTrue(repository.isSignedIn);
     yield repository.signOut();
-    assert.isFalse(repository.isSignedIn());
+    assert.isFalse(repository.isSignedIn);
 
-    var err = yield catchError(function *() {
+    err = yield catchError(function *() {
       yield users.getItem('007');
     });
     assert.instanceOf(err, Error);
     assert.strictEqual(err.statusCode, 403);
 
-    assert.isFalse(repository.isSignedIn());
-    var authorization = yield repository.signInWithAuthorization('abcdefgh');
+    assert.isFalse(repository.isSignedIn);
+    authorization = yield repository.signInWithAuthorization('abcdefgh');
     assert.isFalse(authorization);
-    assert.isFalse(repository.isSignedIn());
+    assert.isFalse(repository.isSignedIn);
 
-    assert.isFalse(repository.isSignedIn());
-    var authorization = yield repository.signInWithAuthorization('12345678');
+    assert.isFalse(repository.isSignedIn);
+    authorization = yield repository.signInWithAuthorization('12345678');
     assert.isTrue(authorization);
-    assert.isTrue(repository.isSignedIn());
+    assert.isTrue(repository.isSignedIn);
 
-    var item = yield users.getItem('007');
+    item = yield users.getItem('007');
     assert.ok(item);
 
     yield repository.signOut();
   });
 
   test('get repository id', function *() {
-    var id = yield repository.getRepositoryId();
+    let id = yield repository.getRepositoryId();
     assert.strictEqual(id, 'a1b2c3d4e5');
   });
 
   test('get an item', function *() {
-    var item = yield users.getItem('aaa');
-    assert.strictEqual(item.getClassName(), 'Superuser');
+    let item = yield users.getItem('aaa');
+    assert.strictEqual(item.class.name, 'Superuser');
     assert.strictEqual(item.id, 'aaa');
     assert.strictEqual(item.firstName, 'Manu');
     assert.strictEqual(item.age, 42);
     assert.strictEqual(item.superpower, 'telepathy');
 
-    var err = yield catchError(function *() {
+    let err = yield catchError(function *() {
       yield users.getItem('xyz');
     });
     assert.instanceOf(err, Error);
     assert.strictEqual(err.statusCode, 404);
 
-    var item = yield users.getItem('xyz', { errorIfMissing: false });
+    item = yield users.getItem('xyz', { errorIfMissing: false });
     assert.isUndefined(item);
   });
 
   test('put an item', function *() {
-    var item = users.createItem({ firstName: 'Vince', age: 43 });
+    let item = users.createItem({ firstName: 'Vince', age: 43 });
     yield item.save();
     assert.strictEqual(item.id, 'bbb');
     assert.strictEqual(item.firstName, 'Vince');
@@ -305,77 +305,77 @@ suite('KindaRemoteRepository', function() {
   });
 
   test('delete an item', function *() {
-    var err = yield catchError(function *() {
+    let err = yield catchError(function *() {
       yield users.deleteItem('ccc');
     });
     assert.isUndefined(err);
 
-    var err = yield catchError(function *() {
+    err = yield catchError(function *() {
       yield users.deleteItem('xyz');
     });
     assert.instanceOf(err, Error);
     assert.strictEqual(err.statusCode, 404);
 
-    var err = yield catchError(function *() {
+    err = yield catchError(function *() {
       yield users.deleteItem('xyz', { errorIfMissing: false });
     });
     assert.isUndefined(err);
   });
 
   test('get several items at once', function *() {
-    var items = yield users.getItems(['aaa', 'bbb']);
+    let items = yield users.getItems(['aaa', 'bbb']);
     assert.strictEqual(items.length, 2);
-    assert.strictEqual(items[0].getClassName(), 'Superuser');
+    assert.strictEqual(items[0].class.name, 'Superuser');
     assert.strictEqual(items[0].id, 'aaa');
     assert.strictEqual(items[0].firstName, 'Manu');
     assert.strictEqual(items[0].age, 42);
     assert.strictEqual(items[0].superpower, 'telepathy');
-    assert.strictEqual(items[1].getClassName(), 'User');
+    assert.strictEqual(items[1].class.name, 'User');
     assert.strictEqual(items[1].id, 'bbb');
     assert.strictEqual(items[1].firstName, 'Vince');
     assert.strictEqual(items[1].age, 43);
   });
 
   test('find items', function *() {
-    var items = yield users.findItems();
+    let items = yield users.findItems();
     assert.strictEqual(items.length, 2);
-    assert.strictEqual(items[0].getClassName(), 'Superuser');
+    assert.strictEqual(items[0].class.name, 'Superuser');
     assert.strictEqual(items[0].id, 'aaa');
     assert.strictEqual(items[0].firstName, 'Manu');
     assert.strictEqual(items[0].age, 42);
     assert.strictEqual(items[0].superpower, 'telepathy');
-    assert.strictEqual(items[1].getClassName(), 'User');
+    assert.strictEqual(items[1].class.name, 'User');
     assert.strictEqual(items[1].id, 'bbb');
     assert.strictEqual(items[1].firstName, 'Vince');
     assert.strictEqual(items[1].age, 43);
   });
 
   test('count items', function *() {
-    var count = yield users.countItems();
+    let count = yield users.countItems();
     assert.strictEqual(count, 2);
   });
 
   test('find and delete items', function *() {
-    var deletedItemsCount = yield users.findAndDeleteItems({
+    let deletedItemsCount = yield users.findAndDeleteItems({
       start: 'bbb', end: 'ddd'
     });
     assert.strictEqual(deletedItemsCount, 3);
   });
 
   test('call custom method on a collection', function *() {
-    var count = yield users.countRetired();
+    let count = yield users.countRetired();
     assert.strictEqual(count, 3);
   });
 
   test('call custom method on an item', function *() {
-    var item = yield users.getItem('aaa');
-    var result = yield item.archive();
+    let item = yield users.getItem('aaa');
+    let result = yield item.archive();
     assert.isTrue(result.ok);
   });
 
   test('call custom method with a body', function *() {
-    var archive = [{ id: 'aaa', firstName: 'Manu', age: 42 }];
-    var result = yield users.restore(archive);
+    let archive = [{ id: 'aaa', firstName: 'Manu', age: 42 }];
+    let result = yield users.restore(archive);
     assert.deepEqual(result, archive);
   });
 });
