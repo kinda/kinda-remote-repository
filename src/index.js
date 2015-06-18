@@ -9,8 +9,13 @@ let KindaHTTPClient = require('kinda-http-client');
 
 let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepository', function() {
   let superCreator = this.creator;
-  this.creator = function(options = {}) {
-    superCreator.call(this, options);
+  this.creator = function(application, options) {
+    if (_.isPlainObject(application)) {
+      options = application;
+      application = undefined;
+    }
+    if (!options) options = {};
+    superCreator.call(this, application, options);
 
     let httpClient = options.httpClient;
     if (!KindaHTTPClient.isClassOf(httpClient)) {
