@@ -219,7 +219,12 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
 
   this.findAndDeleteItems = function *(collection, options) {
     let url = this.makeURL(collection, undefined, undefined, options);
-    let params = { method: 'DELETE', url, json: true };
+    let params = {
+      method: 'DELETE',
+      url,
+      json: true,
+      timeout: 5 * 60 * 1000 // 5 minutes
+    };
     this.writeAuthorization(params);
     let res = yield this.httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
