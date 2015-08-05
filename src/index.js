@@ -283,12 +283,11 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
   };
 
   this.createError = function(res) {
-    let msg = 'HTTP error: ';
-    msg += res.body.error ? res.body.error : 'unknown';
-    msg += ' (statusCode=' + res.statusCode + ')';
-    let error = new Error(msg);
-    error.statusCode = res.statusCode;
-    return error;
+    let msg = res.body.message ? res.body.message : 'Remote Error';
+    let err = new Error(msg);
+    err.statusCode = res.statusCode;
+    if (res.body.type) err.type = res.body.type;
+    return err;
   };
 });
 
