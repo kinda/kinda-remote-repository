@@ -2,7 +2,6 @@
 
 
 let http = require('http');
-require('co-mocha');
 let assert = require('chai').assert;
 let koa = require('koa');
 let koaRouter = require('koa-router');
@@ -14,17 +13,17 @@ let KindaRemoteRepository = require('./src');
 suite('KindaRemoteRepository', function() {
   let httpServer, repository, users;
 
-  let catchError = function *(fn) {
+  let catchError = async function(fn) {
     let err;
     try {
-      yield fn();
+      await fn();
     } catch (e) {
       err = e;
     }
     return err;
   };
 
-  suiteSetup(function *() {
+  suiteSetup(async function() {
     let serverPort = 8888;
 
     let server = koa();
@@ -185,15 +184,15 @@ suite('KindaRemoteRepository', function() {
         this.addPrimaryKeyProperty('id', String);
         this.addProperty('firstName', String);
         this.addProperty('age', Number);
-        this.archive = function *() {
-          return yield this.call('archive');
+        this.archive = async function() {
+          return await this.call('archive');
         };
       });
-      this.countRetired = function *() {
-        return yield this.call('countRetired');
+      this.countRetired = async function() {
+        return await this.call('countRetired');
       };
-      this.restore = function *(archive) {
-        return yield this.call('restore', undefined, archive);
+      this.restore = async function(archive) {
+        return await this.call('restore', undefined, archive);
       };
     });
 
@@ -213,117 +212,117 @@ suite('KindaRemoteRepository', function() {
     users = repository.createCollection('Users');
   });
 
-  suiteTeardown(function *() {
+  suiteTeardown(async function() {
     httpServer.close();
   });
 
-  test('test authorization', function *() {
+  test('test authorization', async function() {
     assert.isFalse(repository.isSignedIn);
     let credentials = { username: 'mvila@3base.com', password: 'wrongpass' };
-    let authorization = yield repository.signInWithCredentials(credentials);
+    let authorization = await repository.signInWithCredentials(credentials);
     assert.isUndefined(authorization);
     assert.isFalse(repository.isSignedIn);
 
-    let err = yield catchError(function *() {
-      yield users.getItem('007');
+    let err = await catchError(async function() {
+      await users.getItem('007');
     });
     assert.instanceOf(err, Error);
     assert.strictEqual(err.statusCode, 403);
 
     assert.isFalse(repository.isSignedIn);
     credentials = { username: 'mvila@3base.com', password: 'password' };
-    authorization = yield repository.signInWithCredentials(credentials);
+    authorization = await repository.signInWithCredentials(credentials);
     assert.ok(authorization);
     assert.isTrue(repository.isSignedIn);
 
-    let item = yield users.getItem('007');
+    let item = await users.getItem('007');
     assert.strictEqual(item.id, '007');
     assert.strictEqual(item.firstName, 'James');
     assert.strictEqual(item.age, 39);
 
     assert.isTrue(repository.isSignedIn);
-    yield repository.signOut();
+    await repository.signOut();
     assert.isFalse(repository.isSignedIn);
 
-    err = yield catchError(function *() {
-      yield users.getItem('007');
+    err = await catchError(async function() {
+      await users.getItem('007');
     });
     assert.instanceOf(err, Error);
     assert.strictEqual(err.statusCode, 403);
 
     assert.isFalse(repository.isSignedIn);
-    authorization = yield repository.signInWithAuthorization('abcdefgh');
+    authorization = await repository.signInWithAuthorization('abcdefgh');
     assert.isFalse(authorization);
     assert.isFalse(repository.isSignedIn);
 
     assert.isFalse(repository.isSignedIn);
-    authorization = yield repository.signInWithAuthorization('12345678');
+    authorization = await repository.signInWithAuthorization('12345678');
     assert.isTrue(authorization);
     assert.isTrue(repository.isSignedIn);
 
-    item = yield users.getItem('007');
+    item = await users.getItem('007');
     assert.ok(item);
 
-    yield repository.signOut();
+    await repository.signOut();
   });
 
-  test('get repository id', function *() {
-    let id = yield repository.getRepositoryId();
+  test('get repository id', async function() {
+    let id = await repository.getRepositoryId();
     assert.strictEqual(id, 'a1b2c3d4e5');
   });
 
-  test('get an item', function *() {
-    let item = yield users.getItem('aaa');
+  test('get an item', async function() {
+    let item = await users.getItem('aaa');
     assert.strictEqual(item.class.name, 'Superuser');
     assert.strictEqual(item.id, 'aaa');
     assert.strictEqual(item.firstName, 'Manu');
     assert.strictEqual(item.age, 42);
     assert.strictEqual(item.superpower, 'telepathy');
 
-    let err = yield catchError(function *() {
-      yield users.getItem('xyz');
+    let err = await catchError(async function() {
+      await users.getItem('xyz');
     });
     assert.instanceOf(err, Error);
     assert.strictEqual(err.statusCode, 404);
 
-    item = yield users.getItem('xyz', { errorIfMissing: false });
+    item = await users.getItem('xyz', { errorIfMissing: false });
     assert.isUndefined(item);
   });
 
-  test('put an item', function *() {
+  test('put an item', async function() {
     let item = users.createItem({ firstName: 'Vince', age: 43 });
-    yield item.save();
+    await item.save();
     assert.strictEqual(item.id, 'bbb');
     assert.strictEqual(item.firstName, 'Vince');
     assert.strictEqual(item.age, 43);
 
     item.age++;
-    yield item.save();
+    await item.save();
     assert.strictEqual(item.id, 'bbb');
     assert.strictEqual(item.firstName, 'Vince');
     assert.strictEqual(item.age, 44);
   });
 
-  test('delete an item', function *() {
-    let err = yield catchError(function *() {
-      yield users.deleteItem('ccc');
+  test('delete an item', async function() {
+    let err = await catchError(async function() {
+      await users.deleteItem('ccc');
     });
     assert.isUndefined(err);
 
-    err = yield catchError(function *() {
-      yield users.deleteItem('xyz');
+    err = await catchError(async function() {
+      await users.deleteItem('xyz');
     });
     assert.instanceOf(err, Error);
     assert.strictEqual(err.statusCode, 404);
 
-    err = yield catchError(function *() {
-      yield users.deleteItem('xyz', { errorIfMissing: false });
+    err = await catchError(async function() {
+      await users.deleteItem('xyz', { errorIfMissing: false });
     });
     assert.isUndefined(err);
   });
 
-  test('get several items at once', function *() {
-    let items = yield users.getItems(['aaa', 'bbb']);
+  test('get several items at once', async function() {
+    let items = await users.getItems(['aaa', 'bbb']);
     assert.strictEqual(items.length, 2);
     assert.strictEqual(items[0].class.name, 'Superuser');
     assert.strictEqual(items[0].id, 'aaa');
@@ -336,8 +335,8 @@ suite('KindaRemoteRepository', function() {
     assert.strictEqual(items[1].age, 43);
   });
 
-  test('find items', function *() {
-    let items = yield users.findItems();
+  test('find items', async function() {
+    let items = await users.findItems();
     assert.strictEqual(items.length, 2);
     assert.strictEqual(items[0].class.name, 'Superuser');
     assert.strictEqual(items[0].id, 'aaa');
@@ -350,32 +349,32 @@ suite('KindaRemoteRepository', function() {
     assert.strictEqual(items[1].age, 43);
   });
 
-  test('count items', function *() {
-    let count = yield users.countItems();
+  test('count items', async function() {
+    let count = await users.countItems();
     assert.strictEqual(count, 2);
   });
 
-  test('find and delete items', function *() {
-    let deletedItemsCount = yield users.findAndDeleteItems({
+  test('find and delete items', async function() {
+    let deletedItemsCount = await users.findAndDeleteItems({
       start: 'bbb', end: 'ddd'
     });
     assert.strictEqual(deletedItemsCount, 3);
   });
 
-  test('call custom method on a collection', function *() {
-    let count = yield users.countRetired();
+  test('call custom method on a collection', async function() {
+    let count = await users.countRetired();
     assert.strictEqual(count, 3);
   });
 
-  test('call custom method on an item', function *() {
-    let item = yield users.getItem('aaa');
-    let result = yield item.archive();
+  test('call custom method on an item', async function() {
+    let item = await users.getItem('aaa');
+    let result = await item.archive();
     assert.isTrue(result.ok);
   });
 
-  test('call custom method with a body', function *() {
+  test('call custom method with a body', async function() {
     let archive = [{ id: 'aaa', firstName: 'Manu', age: 42 }];
-    let result = yield users.restore(archive);
+    let result = await users.restore(archive);
     assert.deepEqual(result, archive);
   });
 });

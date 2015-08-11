@@ -26,20 +26,20 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     this.baseURL = options.url;
   };
 
-  this.getRepositoryId = function *() {
+  this.getRepositoryId = async function() {
     if (this._repositoryId) return this._repositoryId;
     let url = this.makeURL();
     let params = { method: 'GET', url, json: true };
     this.writeAuthorization(params);
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
     let id = res.body.repositoryId;
     this._repositoryId = id;
     return id;
   };
 
-  this.transaction = function *(fn) {
-    return yield fn(this); // remote transactions are not supported
+  this.transaction = async function(fn) {
+    return await fn(this); // remote transactions are not supported
   };
 
   this.isInsideTransaction = false;
@@ -55,11 +55,11 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     }
   });
 
-  this.signInWithCredentials = function *(credentials) {
+  this.signInWithCredentials = async function(credentials) {
     if (!credentials) throw new Error('credentials are missing');
     let url = this.makeURL('authorizations');
     let params = { method: 'POST', url, body: credentials, json: true };
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode === 403) return undefined;
     if (res.statusCode !== 201) {
       throw new Error(`unexpected HTTP status code (${res.statusCode})`);
@@ -70,10 +70,10 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     return authorization;
   };
 
-  this.signInWithAuthorization = function *(authorization) {
+  this.signInWithAuthorization = async function(authorization) {
     if (!authorization) throw new Error('authorization is missing');
     let url = this.makeURL('authorizations', authorization);
-    let res = yield this.httpClient.get({ url, json: true });
+    let res = await this.httpClient.get({ url, json: true });
     if (res.statusCode === 403) return false;
     if (res.statusCode !== 204) {
       throw new Error(`unexpected HTTP status code (${res.statusCode})`);
@@ -82,10 +82,10 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     return true;
   };
 
-  this.signOut = function *() {
+  this.signOut = async function() {
     if (!this.isSignedIn) return;
     let url = this.makeURL('authorizations', this.authorization);
-    let res = yield this.httpClient.del({ url, json: true });
+    let res = await this.httpClient.del({ url, json: true });
     if (res.statusCode !== 204) {
       throw new Error(`unexpected HTTP status code (${res.statusCode})`);
     }
@@ -122,12 +122,12 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
 
   // === Operations ===
 
-  this.getItem = function *(item, options) {
+  this.getItem = async function(item, options) {
     let collection = item.collection;
     let url = this.makeURL(collection, item, undefined, options);
     let params = { method: 'GET', url, json: true };
     this.writeAuthorization(params);
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode === 204) return undefined; // item not found with errorIfMissing=false
     else if (res.statusCode !== 200) throw this.createError(res);
     let result = res.body;
@@ -141,32 +141,32 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     return item;
   };
 
-  this.putItem = function *(item, options) {
+  this.putItem = async function(item, options) {
     let collection = item.collection;
     let existingItem = !item.isNew ? item : undefined;
     let url = this.makeURL(collection, existingItem, undefined, options);
     let json = item.serialize();
     let params = { method: item.isNew ? 'POST' : 'PUT', url, body: json, json: true };
     this.writeAuthorization(params);
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode !== (item.isNew ? 201 : 200)) throw this.createError(res);
     item.replaceValue(res.body.value);
-    yield this.emitAsync('didPutItem', item, options);
+    await this.emit('didPutItem', item, options);
   };
 
-  this.deleteItem = function *(item, options) {
+  this.deleteItem = async function(item, options) {
     let collection = item.collection;
     let url = this.makeURL(collection, item, undefined, options);
     let params = { method: 'DELETE', url, json: true };
     this.writeAuthorization(params);
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
     let hasBeenDeleted = res.body;
-    if (hasBeenDeleted) yield this.emitAsync('didDeleteItem', item, options);
+    if (hasBeenDeleted) await this.emit('didDeleteItem', item, options);
     return hasBeenDeleted;
   };
 
-  this.getItems = function *(items, options) {
+  this.getItems = async function(items, options) {
     if (!items.length) return [];
     // we suppose that every items are part of the same collection:
     let collection = items[0].collection;
@@ -174,7 +174,7 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     let url = this.makeURL(collection, undefined, 'getItems', options);
     let params = { method: 'POST', url, body: keys, json: true };
     this.writeAuthorization(params);
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode !== 201) throw this.createError(res);
     let results = res.body;
     let cache = {};
@@ -188,11 +188,11 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     return items;
   };
 
-  this.findItems = function *(collection, options) {
+  this.findItems = async function(collection, options) {
     let url = this.makeURL(collection, undefined, undefined, options);
     let params = { method: 'GET', url, json: true };
     this.writeAuthorization(params);
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
     let results = res.body;
     let cache = {};
@@ -204,20 +204,20 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     return items;
   };
 
-  this.countItems = function *(collection, options) {
+  this.countItems = async function(collection, options) {
     let url = this.makeURL(collection, undefined, 'count', options);
     let params = { method: 'GET', url, json: true };
     this.writeAuthorization(params);
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
     return res.body;
   };
 
-  this.forEachItems = function *(collection, options, fn, thisArg) { // eslint-disable-line no-unused-vars
+  this.forEachItems = async function(collection, options, fn, thisArg) { // eslint-disable-line no-unused-vars
     throw new Error('unimplemented method');
   };
 
-  this.findAndDeleteItems = function *(collection, options) {
+  this.findAndDeleteItems = async function(collection, options) {
     let url = this.makeURL(collection, undefined, undefined, options);
     let params = {
       method: 'DELETE',
@@ -226,12 +226,12 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
       timeout: 5 * 60 * 1000 // 5 minutes
     };
     this.writeAuthorization(params);
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
     return res.body;
   };
 
-  this.call = function *(collection, item, method, options, body) {
+  this.call = async function(collection, item, method, options, body) {
     let url = this.makeURL(collection, item, method, options);
     let params = {
       method: body == null ? 'GET' : 'POST',
@@ -241,7 +241,7 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
       timeout: 5 * 60 * 1000 // 5 minutes
     };
     this.writeAuthorization(params);
-    let res = yield this.httpClient.request(params);
+    let res = await this.httpClient.request(params);
     if (res.statusCode === (body == null ? 200 : 201)) {
       return res.body;
     } else if (res.statusCode === 204) {
