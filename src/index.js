@@ -172,7 +172,9 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
     let collection = items[0].collection;
     let keys = _.pluck(items, 'primaryKeyValue');
     let url = this.makeURL(collection, undefined, 'getItems', options);
-    let params = { method: 'POST', url, body: keys, json: true };
+    let params = {
+      method: 'POST', url, body: keys, json: true, timeout: 90000
+    };
     this.writeAuthorization(params);
     let res = await this.httpClient.request(params);
     if (res.statusCode !== 201) throw this.createError(res);
@@ -190,7 +192,7 @@ let KindaRemoteRepository = KindaAbstractRepository.extend('KindaRemoteRepositor
 
   this.findItems = async function(collection, options) {
     let url = this.makeURL(collection, undefined, undefined, options);
-    let params = { method: 'GET', url, json: true };
+    let params = { method: 'GET', url, json: true, timeout: 90000 };
     this.writeAuthorization(params);
     let res = await this.httpClient.request(params);
     if (res.statusCode !== 200) throw this.createError(res);
